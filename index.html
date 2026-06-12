@@ -28,15 +28,6 @@
     .sdot{width:8px;height:8px;border-radius:50%;background:var(--gn);animation:pulse 2s infinite}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
     main{padding:20px 24px;max-width:1480px;margin:0 auto}
-    .apib{background:linear-gradient(135deg,rgba(88,166,255,.08),rgba(63,185,80,.06));border:1px solid rgba(88,166,255,.35);border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-    .apib.hidden{display:none}
-    .apib-t{flex:1;min-width:220px}
-    .apib-t strong{font-size:14px;display:block;margin-bottom:3px}
-    .apib-t p{font-size:12px;color:var(--mu)}
-    .air{display:flex;gap:8px;flex-wrap:wrap}
-    .air input{padding:7px 12px;background:var(--sf2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-size:13px;width:260px;outline:none}
-    .air input:focus{border-color:var(--ac)}
-    .aab{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:rgba(63,185,80,.12);border:1px solid rgba(63,185,80,.3);border-radius:20px;font-size:12px;color:var(--gn);font-weight:600}
     .filters{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
     .fg{display:flex;flex-direction:column;gap:4px}
     .fg label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--mu)}
@@ -145,28 +136,11 @@
   </div>
   <div class="hr">
     <div class="sdot" id="sdot" title="Status"></div>
-    <button class="btn" id="apiBtn">🔑 Chave API</button>
+    <button class="ib" id="refreshBtn" title="Atualizar dados">⟳</button>
     <button class="ib" id="themeBtn" title="Tema">🌙</button>
   </div>
 </header>
 <main>
-  <div class="apib" id="apiBanner">
-    <div style="font-size:28px">🔑</div>
-    <div class="apib-t">
-      <strong>Configure sua chave brapi.dev para preços em tempo real e gráficos históricos</strong>
-      <p>Crie conta gratuita em <a href="https://brapi.dev" target="_blank">brapi.dev</a> (sem cartão). Os fundamentais vêm do Status Invest, sem necessidade de chave.</p>
-    </div>
-    <div class="air">
-      <input id="apiInput" type="text" placeholder="Cole sua chave brapi.dev...">
-      <button class="btn btn-p" id="saveApiBtn">Salvar</button>
-      <button class="btn" id="dismissApiBtn">✕</button>
-    </div>
-  </div>
-  <div id="apiBar" style="margin-bottom:14px;display:none;">
-    <span class="aab">✓ brapi.dev conectado</span>
-    <button class="btn" style="margin-left:10px;font-size:12px;padding:4px 10px;" id="changeApiBtn">Alterar</button>
-    <button class="btn" style="margin-left:4px;font-size:12px;padding:4px 10px;" id="refreshBtn">⟳ Atualizar</button>
-  </div>
   <div id="progressBar" class="pbar" style="display:none"><div class="pbar-fill" id="pbarFill" style="width:0%"></div></div>
   <div class="filters">
     <div class="fg"><label>Setor</label><select id="fSetor"><option value="">Todos os setores</option></select></div>
@@ -264,7 +238,6 @@
 /* ═══════════════════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════════════════ */
-let apiKey    = localStorage.getItem('brapi_key') || '';
 let stocks    = [];   // all loaded stocks
 let filtered  = [];   // after search/filter
 let page      = 1;
@@ -418,305 +391,213 @@ async function computeDivForStock(s,code){
 }
 
 /* ═══════════════════════════════════════════════════════
-   COMPREHENSIVE STOCK LIST  (~300 B3 ativos)
+   LISTA DE AÇÕES — TOP 200 POR VALOR DE MERCADO (B3)
+   Fonte: brapi.dev (quote/list, dados em tempo real da B3)
+   Atualizado em 2026-06-11. Apenas tickers ativos e válidos
+   (padrão XXXX3/4/5/6/7/8/11), excluindo BDRs e fracionário.
 ═══════════════════════════════════════════════════════ */
 // [ticker, nome, setor]
 const DB = [
-  // PETRÓLEO, GÁS E BIOCOMBUSTÍVEIS
-  ['PETR3','Petrobras ON','Petróleo, Gás e Biocombustíveis'],
   ['PETR4','Petrobras PN','Petróleo, Gás e Biocombustíveis'],
-  ['PRIO3','PetroRio','Petróleo, Gás e Biocombustíveis'],
-  ['RECV3','PetroRecôncavo','Petróleo, Gás e Biocombustíveis'],
-  ['RRRP3','3R Petroleum','Petróleo, Gás e Biocombustíveis'],
-  ['CSAN3','Cosan','Petróleo, Gás e Biocombustíveis'],
-  ['UGPA3','Ultrapar','Petróleo, Gás e Biocombustíveis'],
-  ['VBBR3','Vibra Energia','Petróleo, Gás e Biocombustíveis'],
-  // MATERIAIS BÁSICOS
-  ['VALE3','Vale','Materiais Básicos'],
-  ['CSNA3','CSN','Materiais Básicos'],
-  ['GGBR3','Gerdau ON','Materiais Básicos'],
-  ['GGBR4','Gerdau PN','Materiais Básicos'],
-  ['GOAU3','Metalúrgica Gerdau ON','Materiais Básicos'],
-  ['GOAU4','Metalúrgica Gerdau PN','Materiais Básicos'],
-  ['USIM3','Usiminas ON','Materiais Básicos'],
-  ['USIM5','Usiminas PNA','Materiais Básicos'],
-  ['CMIN3','CSN Mineração','Materiais Básicos'],
-  ['BRAP3','Bradespar ON','Materiais Básicos'],
-  ['BRAP4','Bradespar PN','Materiais Básicos'],
-  ['FESA3','Ferbasa ON','Materiais Básicos'],
-  ['FESA4','Ferbasa PN','Materiais Básicos'],
-  ['CBAV3','CBA','Materiais Básicos'],
-  ['SUZB3','Suzano','Materiais Básicos'],
-  ['KLBN3','Klabin ON','Materiais Básicos'],
-  ['KLBN4','Klabin PN','Materiais Básicos'],
-  ['KLBN11','Klabin UNT','Materiais Básicos'],
-  ['DXCO3','Dexco','Materiais Básicos'],
-  ['BRKM3','Braskem ON','Materiais Básicos'],
-  ['BRKM5','Braskem PNA','Materiais Básicos'],
-  ['UNIP3','Unipar Carbocloro ON','Materiais Básicos'],
-  ['UNIP6','Unipar Carbocloro PNB','Materiais Básicos'],
-  // BENS INDUSTRIAIS
-  ['WEGE3','WEG','Bens Industriais'],
-  ['EMBR3','Embraer','Bens Industriais'],
-  ['RAIL3','Rumo Logística','Bens Industriais'],
-  ['CCRO3','CCR','Bens Industriais'],
-  ['ECOR3','EcoRodovias','Bens Industriais'],
-  ['TUPY3','Tupy','Bens Industriais'],
-  ['FRAS3','Fras-Le','Bens Industriais'],
-  ['ROMI3','Indústrias Romi','Bens Industriais'],
-  ['MYPK3','Iochpe-Maxion','Bens Industriais'],
-  ['LEVE3','Metal Leve','Bens Industriais'],
-  ['KEPL3','Kepler Weber','Bens Industriais'],
-  ['POMO3','Marcopolo ON','Bens Industriais'],
-  ['POMO4','Marcopolo PN','Bens Industriais'],
-  ['VAMO3','Vamos','Bens Industriais'],
-  ['MOVI3','Movida','Bens Industriais'],
-  ['SIMH3','Simpar','Bens Industriais'],
-  ['TGMA3','Tegma','Bens Industriais'],
-  ['RLOG3','Hidrovias do Brasil','Bens Industriais'],
-  ['PTBL3','Portobello','Bens Industriais'],
-  ['RCSL3','Recrusul ON','Bens Industriais'],
-  ['RCSL4','Recrusul PN','Bens Industriais'],
-  // CONSUMO CÍCLICO
-  ['MGLU3','Magazine Luiza','Consumo Cíclico'],
-  ['LREN3','Lojas Renner','Consumo Cíclico'],
-  ['ARZZ3','Arezzo&Co','Consumo Cíclico'],
-  ['SOMA3','Grupo Soma','Consumo Cíclico'],
-  ['VIVA3','Vivara','Consumo Cíclico'],
-  ['CEAB3','C&A Modas','Consumo Cíclico'],
-  ['ALPA3','Alpargatas ON','Consumo Cíclico'],
-  ['ALPA4','Alpargatas PN','Consumo Cíclico'],
-  ['VULC3','Vulcabras','Consumo Cíclico'],
-  ['GRND3','Grendene','Consumo Cíclico'],
-  ['GUAR3','Guararapes ON','Consumo Cíclico'],
-  ['GUAR4','Guararapes PN','Consumo Cíclico'],
-  ['AMAR3','Marisa','Consumo Cíclico'],
-  ['BHIA3','Casas Bahia','Consumo Cíclico'],
-  ['NTCO3','Natura&Co','Consumo Cíclico'],
-  ['PETZ3','Petz','Consumo Cíclico'],
-  ['SBFG3','Grupo SBF','Consumo Cíclico'],
-  ['AZUL4','Azul PN','Consumo Cíclico'],
-  ['GOLL4','Gol PN','Consumo Cíclico'],
-  ['CVCB3','CVC Brasil','Consumo Cíclico'],
-  ['COGN3','Cogna Educação','Consumo Cíclico'],
-  ['YDUQ3','Yduqs','Consumo Cíclico'],
-  ['SEER3','Ser Educacional','Consumo Cíclico'],
-  ['ANIM3','Ânima Holding','Consumo Cíclico'],
-  // CONSTRUÇÃO CIVIL
-  ['MRVE3','MRV Engenharia','Construção Civil'],
-  ['CYRE3','Cyrela','Construção Civil'],
-  ['EVEN3','Even Construtora','Construção Civil'],
-  ['DIRR3','Direcional','Construção Civil'],
-  ['TEND3','Tenda','Construção Civil'],
-  ['MTRE3','Mitre Realty','Construção Civil'],
-  ['LAVV3','Lavvi','Construção Civil'],
-  ['CURY3','Cury Construtora','Construção Civil'],
-  ['HBOR3','Helbor','Construção Civil'],
-  ['TRIS3','Trisul','Construção Civil'],
-  ['GFSA3','Gafisa','Construção Civil'],
-  ['EZTC3','EZTEC','Construção Civil'],
-  ['JHSF3','JHSF','Construção Civil'],
-  ['PLPL3','Plan&Plan','Construção Civil'],
-  // SHOPPINGS E IMÓVEIS
-  ['IGTI3','Iguatemi ON','Shoppings e Imóveis'],
-  ['IGTI11','Iguatemi UNT','Shoppings e Imóveis'],
-  ['MULT3','Multiplan','Shoppings e Imóveis'],
-  ['BRML3','BR Malls','Shoppings e Imóveis'],
-  ['BRPR3','BR Properties','Shoppings e Imóveis'],
-  // CONSUMO NÃO CÍCLICO / ALIMENTOS
-  ['ABEV3','Ambev','Consumo Não Cíclico'],
-  ['JBSS3','JBS','Consumo Não Cíclico'],
-  ['BRFS3','BRF','Consumo Não Cíclico'],
-  ['MRFG3','Marfrig','Consumo Não Cíclico'],
-  ['BEEF3','Minerva Foods','Consumo Não Cíclico'],
-  ['SMTO3','São Martinho','Consumo Não Cíclico'],
-  ['CAML3','Camil Alimentos','Consumo Não Cíclico'],
-  ['MDIA3','M. Dias Branco','Consumo Não Cíclico'],
-  ['PCAR3','GPA','Consumo Não Cíclico'],
-  ['CRFB3','Carrefour Brasil','Consumo Não Cíclico'],
-  ['ASAI3','Assaí','Consumo Não Cíclico'],
-  ['SLCE3','SLC Agrícola','Consumo Não Cíclico'],
-  ['AGRO3','BrasilAgro','Consumo Não Cíclico'],
-  ['RAIZ4','Raízen PN','Consumo Não Cíclico'],
-  ['SOJA3','Boa Safra Sementes','Consumo Não Cíclico'],
-  ['TTEN3','Terra Santa Agro','Consumo Não Cíclico'],
-  // SAÚDE
-  ['RDOR3',"Rede D'Or",'Saúde'],
-  ['HAPV3','Hapvida','Saúde'],
-  ['FLRY3','Fleury','Saúde'],
-  ['DASA3','Diagnósticos América','Saúde'],
-  ['QUAL3','Qualicorp','Saúde'],
-  ['HYPE3','Hypera Pharma','Saúde'],
-  ['BLAU3','Blau Farmacêutica','Saúde'],
-  ['PNVL3','Panvel','Saúde'],
-  ['ODPV3','Odontoprev','Saúde'],
-  ['ONCO3','Oncoclínicas','Saúde'],
-  ['GGPS3','GPS Participações','Saúde'],
-  // FINANCEIRO E BANCOS
-  ['ITUB3','Itaú Unibanco ON','Financeiro e Outros'],
+  ['PETR3','Petrobras ON','Petróleo, Gás e Biocombustíveis'],
   ['ITUB4','Itaú Unibanco PN','Financeiro e Outros'],
-  ['BBDC3','Bradesco ON','Financeiro e Outros'],
+  ['ITUB3','Itaú Unibanco ON','Financeiro e Outros'],
+  ['VALE3','Vale ON','Materiais Básicos'],
+  ['ABEV3','Ambev ON','Consumo Não Cíclico'],
+  ['WEGE3','WEG ON','Bens Industriais'],
   ['BBDC4','Bradesco PN','Financeiro e Outros'],
-  ['BBAS3','Banco do Brasil','Financeiro e Outros'],
-  ['SANB3','Santander ON','Financeiro e Outros'],
-  ['SANB4','Santander PN','Financeiro e Outros'],
-  ['SANB11','Santander UNT','Financeiro e Outros'],
+  ['BBDC3','Bradesco ON','Financeiro e Outros'],
+  ['BPAC5','BTG Pactual PNA','Financeiro e Outros'],
   ['BPAC3','BTG Pactual ON','Financeiro e Outros'],
-  ['BPAC5','BTG Pactual PN','Financeiro e Outros'],
-  ['BPAC11','BTG Pactual UNT','Financeiro e Outros'],
-  ['ABCB4','ABC Brasil PN','Financeiro e Outros'],
-  ['BRSR3','Banrisul ON','Financeiro e Outros'],
-  ['BRSR6','Banrisul PNB','Financeiro e Outros'],
-  ['BMGB4','Banco BMG PN','Financeiro e Outros'],
-  ['INTER3','Banco Inter ON','Financeiro e Outros'],
-  ['BBSE3','BB Seguridade','Financeiro e Outros'],
-  ['SULA3','SulAmérica ON','Financeiro e Outros'],
-  ['SULA11','SulAmérica UNT','Financeiro e Outros'],
-  ['IRBR3','IRB Brasil Re','Financeiro e Outros'],
-  ['PSSA3','Porto Seguro','Financeiro e Outros'],
-  ['WIZC3','Wiz Soluções','Financeiro e Outros'],
-  ['CXSE3','Caixa Seguridade','Financeiro e Outros'],
-  ['CIEL3','Cielo','Financeiro e Outros'],
-  ['PINE4','Pine PN','Financeiro e Outros'],
-  // TECNOLOGIA DA INFORMAÇÃO
-  ['TOTVS3','TOTVS','Tecnologia da Informação'],
-  ['LWSA3','Locaweb','Tecnologia da Informação'],
-  ['POSI3','Positivo Tecnologia','Tecnologia da Informação'],
-  ['CASH3','Méliuz','Tecnologia da Informação'],
-  ['INBR3','Intelbras','Tecnologia da Informação'],
-  // COMUNICAÇÕES
-  ['VIVT3','Telefônica Vivo','Comunicações'],
-  ['TIMS3','TIM','Comunicações'],
-  ['OIBR3','Oi ON','Comunicações'],
-  ['OIBR4','Oi PN','Comunicações'],
-  // UTILIDADE PÚBLICA — ENERGIA ELÉTRICA
-  ['EGIE3','Engie Brasil','Utilidade Pública'],
-  ['TAEE3','Transmissão Paulista ON','Utilidade Pública'],
-  ['TAEE4','Transmissão Paulista PN','Utilidade Pública'],
-  ['TAEE11','Transmissão Paulista UNT','Utilidade Pública'],
-  ['CPFE3','CPFL Energia','Utilidade Pública'],
-  ['ENGI3','Energisa ON','Utilidade Pública'],
-  ['ENGI4','Energisa PN','Utilidade Pública'],
-  ['ENGI11','Energisa UNT','Utilidade Pública'],
+  ['ITSA4','Itaúsa PN','Financeiro e Outros'],
+  ['ITSA3','Itaúsa ON','Financeiro e Outros'],
+  ['AXIA3','Axia Energia ON','Utilidade Pública'],
+  ['AXIA7','Axia Energia PNC','Utilidade Pública'],
+  ['BBAS3','Banco do Brasil ON','Financeiro e Outros'],
+  ['VIVT3','Telefônica Brasil (Vivo) ON','Comunicações'],
+  ['SANB4','Santander Brasil PN','Financeiro e Outros'],
+  ['SANB3','Santander Brasil ON','Financeiro e Outros'],
+  ['SBSP3','Sabesp ON','Utilidade Pública'],
+  ['RDOR3','Rede D\'Or São Luiz ON','Saúde'],
+  ['BBSE3','BB Seguridade ON','Financeiro e Outros'],
+  ['CXSE3','Caixa Seguridade ON','Financeiro e Outros'],
+  ['TIMS3','TIM ON','Comunicações'],
+  ['PRIO3','PRIO ON','Petróleo, Gás e Biocombustíveis'],
+  ['SUZB3','Suzano ON','Materiais Básicos'],
+  ['EMBJ3','Embraer ON','Bens Industriais'],
+  ['CPFE3','CPFL Energia ON','Utilidade Pública'],
+  ['EQTL3','Equatorial Energia ON','Utilidade Pública'],
+  ['ENEV3','Eneva ON','Utilidade Pública'],
+  ['GGBR4','Gerdau PN','Materiais Básicos'],
+  ['GGBR3','Gerdau ON','Materiais Básicos'],
   ['CPLE3','Copel ON','Utilidade Pública'],
-  ['CPLE5','Copel PNA','Utilidade Pública'],
-  ['CPLE6','Copel PNB','Utilidade Pública'],
-  ['CMIG3','Cemig ON','Utilidade Pública'],
+  ['RENT3','Localiza ON','Consumo Cíclico'],
+  ['RENT4','Localiza PN','Consumo Cíclico'],
+  ['EGIE3','Engie Brasil ON','Utilidade Pública'],
+  ['SAUD3','BradSaúde ON','Saúde'],
   ['CMIG4','Cemig PN','Utilidade Pública'],
-  ['ELET3','Eletrobras ON','Utilidade Pública'],
-  ['ELET6','Eletrobras PNB','Utilidade Pública'],
-  ['NEOE3','Neoenergia','Utilidade Pública'],
-  ['EQTL3','Equatorial Energia','Utilidade Pública'],
-  ['AURE3','Auren Energia','Utilidade Pública'],
-  ['ENBR3','EDP Brasil','Utilidade Pública'],
-  ['CESP3','CESP ON','Utilidade Pública'],
-  ['CESP5','CESP PNA','Utilidade Pública'],
-  ['CESP6','CESP PNB','Utilidade Pública'],
-  ['TRPL3','CTEEP ON','Utilidade Pública'],
-  ['TRPL4','CTEEP PN','Utilidade Pública'],
-  ['LIGT3','Light','Utilidade Pública'],
-  ['MEGA3','Omega Energia','Utilidade Pública'],
-  ['ALUP3','Alupar ON','Utilidade Pública'],
-  ['ALUP11','Alupar UNT','Utilidade Pública'],
-  ['AESB3','AES Brasil','Utilidade Pública'],
-  ['ELPL3','Eletropaulo ON','Utilidade Pública'],
-  // UTILIDADE PÚBLICA — SANEAMENTO
-  ['SBSP3','Sabesp','Utilidade Pública'],
-  ['SAPR3','Sanepar ON','Utilidade Pública'],
-  ['SAPR4','Sanepar PN','Utilidade Pública'],
-  ['SAPR11','Sanepar UNT','Utilidade Pública'],
-  ['CSMG3','Copasa','Utilidade Pública'],
-  // FINANCEIRO — ADICIONAIS
-  ['MODL3','Modalmais ON','Financeiro e Outros'],
-  ['MODL11','Modalmais UNT','Financeiro e Outros'],
-  ['BMGB4','Banco BMG PN','Financeiro e Outros'],
-  ['MERC3','Mercantil ON','Financeiro e Outros'],
-  ['MERC4','Mercantil PN','Financeiro e Outros'],
-  ['BRSR3','Banrisul ON','Financeiro e Outros'],
-  ['OMGE3','Omega Energia ON','Financeiro e Outros'],
-  ['KLBR11','Klabin Bonds','Financeiro e Outros'],
-  // BENS INDUSTRIAIS — ADICIONAIS
-  ['WLMM3','Whirlpool ON','Bens Industriais'],
-  ['WLMM4','Whirlpool PN','Bens Industriais'],
-  ['EALT3','Eletroalte ON','Bens Industriais'],
-  ['EALT4','Eletroalte PN','Bens Industriais'],
-  ['DEXP3','Dexxos ON','Bens Industriais'],
-  ['HOOT3','Hotéis Othon ON','Bens Industriais'],
-  ['HOOT4','Hotéis Othon PN','Bens Industriais'],
-  ['PMAM3','Paranapanema','Bens Industriais'],
-  ['JSLG3','JSL Logística','Bens Industriais'],
-  ['TPIS3','Triunfo Participações','Bens Industriais'],
-  // CONSUMO CÍCLICO — ADICIONAIS
-  ['TCSA3','Tecnisa','Construção Civil'],
-  ['MULT3','Multiplan','Shoppings e Imóveis'],
-  ['LOGG3','LOG Commercial','Shoppings e Imóveis'],
-  ['HBRE3','JHSF Participações','Shoppings e Imóveis'],
-  ['MELI3','MercadoLibre','Consumo Cíclico'],
-  ['DESK3','Desk Manager','Consumo Cíclico'],
-  ['DOTZ3','Dotz','Consumo Cíclico'],
-  ['GPIV33','GP Investments','Financeiro e Outros'],
-  // SAÚDE — ADICIONAIS
-  ['MEAL3','International Meal','Saúde'],
-  ['LWSA3','Locaweb','Tecnologia da Informação'],
-  ['RNEW3','Renova Energia ON','Utilidade Pública'],
-  ['RNEW11','Renova Energia UNT','Utilidade Pública'],
-  // TELECOMUNICAÇÕES — ADICIONAIS
-  ['BRIT3','Brisanet','Comunicações'],
-  ['TELB3','Telec. Brasileiras ON','Comunicações'],
-  ['TELB4','Telec. Brasileiras PN','Comunicações'],
-  // QUÍMICOS / PETROQUÍMICA
-  ['SMFT3','Smartfit','Consumo Cíclico'],
-  ['MILS3','Mills Estruturas','Bens Industriais'],
-  ['FRTA3','Frutacor','Consumo Não Cíclico'],
-  ['GRND3','Grendene','Consumo Cíclico'],
-  ['SHOW3','T4F Entretenimento','Consumo Cíclico'],
-  ['RADL3','Raia Drogasil','Saúde'],
-  ['PFRM3','Pharmus','Saúde'],
-  ['CGAS3','Comgás ON','Utilidade Pública'],
+  ['CMIG3','Cemig ON','Utilidade Pública'],
+  ['VBBR3','Vibra Energia ON','Petróleo, Gás e Biocombustíveis'],
+  ['PSSA3','Porto Seguro ON','Financeiro e Outros'],
+  ['RADL3','Raia Drogasil ON','Saúde'],
+  ['MOTV3','Motiva ON','Bens Industriais'],
+  ['UGPA3','Ultrapar ON','Petróleo, Gás e Biocombustíveis'],
+  ['RAIL3','Rumo ON','Bens Industriais'],
+  ['CMIN3','CSN Mineração ON','Materiais Básicos'],
+  ['MBRF3','MBRF (Marfrig + BRF) ON','Consumo Não Cíclico'],
+  ['CSMG3','Copasa ON','Utilidade Pública'],
+  ['KLBN4','Klabin PN','Materiais Básicos'],
+  ['KLBN3','Klabin ON','Materiais Básicos'],
+  ['ISAE4','ISA Energia Brasil PN','Utilidade Pública'],
+  ['ISAE3','ISA Energia Brasil ON','Utilidade Pública'],
+  ['PASS3','Compass Gás e Energia ON','Utilidade Pública'],
+  ['ENGI4','Energisa PN','Utilidade Pública'],
+  ['ENGI3','Energisa ON','Utilidade Pública'],
+  ['TOTS3','Totvs ON','Tecnologia da Informação'],
   ['CGAS5','Comgás PNA','Utilidade Pública'],
-  // MINERAÇÃO ADICIONAIS
-  ['AURA33','Aura Minerals','Materiais Básicos'],
-  ['CSUD3','CSU Digital','Tecnologia da Informação'],
-  ['NINJ3','Ninja','Tecnologia da Informação'],
-  ['IFCM3','Infracommerce','Tecnologia da Informação'],
-  // ENERGIA ADICIONAIS
+  ['CGAS3','Comgás ON','Utilidade Pública'],
+  ['REDE3','Rede Energia ON','Utilidade Pública'],
+  ['LREN3','Lojas Renner ON','Consumo Cíclico'],
+  ['HYPE3','Hypera Pharma ON','Saúde'],
+  ['MULT3','Multiplan ON','Shoppings e Imóveis'],
+  ['ALOS3','Allos ON','Shoppings e Imóveis'],
+  ['TAEE4','Taesa PN','Utilidade Pública'],
+  ['TAEE3','Taesa ON','Utilidade Pública'],
+  ['CSAN3','Cosan ON','Petróleo, Gás e Biocombustíveis'],
+  ['GOAU4','Metalúrgica Gerdau PN','Materiais Básicos'],
+  ['GOAU3','Metalúrgica Gerdau ON','Materiais Básicos'],
   ['EQPA3','Equatorial Pará ON','Utilidade Pública'],
-  ['EQPA5','Equatorial Pará PNA','Utilidade Pública'],
-  ['EGIE3','Engie Brasil','Utilidade Pública'],
-  ['AESB3','AES Brasil','Utilidade Pública'],
-  ['GSBR3','GreenState','Utilidade Pública'],
-  ['ZAMP3','Zamp (BK)','Consumo Não Cíclico'],
-  ['RECV3','PetroRecôncavo','Petróleo, Gás e Biocombustíveis'],
-  ['PRIO3','PetroRio','Petróleo, Gás e Biocombustíveis'],
-  // AGRONEGÓCIO ADICIONAIS
-  ['LAND3','BrasilAgro PN','Consumo Não Cíclico'],
-  ['ETER3','Eternit','Materiais Básicos'],
-  ['DNOS3','Diagnósticos Norte','Saúde'],
-  ['MBLY3','Mobly','Consumo Cíclico'],
-  ['ARML3','Armac','Bens Industriais'],
-  ['PGMN3','Piracanjuba','Consumo Não Cíclico'],
-  ['ORVR3','Orizon Valoriz.','Utilidade Pública'],
-  ['ESPA3','Espaço Laser','Saúde'],
-  ['APER3','Alper Consultoria','Financeiro e Outros'],
-  ['GGPS3','GPS Participações','Saúde'],
-  ['DMVF3','DM Farma','Saúde'],
-  ['BPAN4','Banco Pan PN','Financeiro e Outros'],
+  ['USIM5','Usiminas PNA','Materiais Básicos'],
+  ['USIM3','Usiminas ON','Materiais Básicos'],
+  ['USIM6','Usiminas PNB','Materiais Básicos'],
+  ['AURE3','Auren Energia ON','Utilidade Pública'],
+  ['NATU3','Natura ON','Consumo Cíclico'],
+  ['SMFT3','Smart Fit ON','Consumo Cíclico'],
+  ['SAPR4','Sanepar PN','Utilidade Pública'],
+  ['SAPR3','Sanepar ON','Utilidade Pública'],
+  ['ASAI3','Assaí ON','Consumo Não Cíclico'],
+  ['BNBR3','Banco do Nordeste ON','Financeiro e Outros'],
+  ['ALUP4','Alupar PN','Utilidade Pública'],
+  ['ALUP3','Alupar ON','Utilidade Pública'],
+  ['BRAV3','Brava Energia ON','Petróleo, Gás e Biocombustíveis'],
+  ['CEGR3','CEG ON','Utilidade Pública'],
+  ['CURY3','Cury Construtora ON','Construção Civil'],
+  ['CBEE3','Ampla Energia (Enel RJ) ON','Utilidade Pública'],
+  ['GMAT3','Grupo Mateus ON','Consumo Não Cíclico'],
+  ['GGPS3','GPS Participações ON','Bens Industriais'],
+  ['CYRE3','Cyrela ON','Construção Civil'],
+  ['CYRE4','Cyrela PN','Construção Civil'],
+  ['ENMT3','Energisa Mato Grosso ON','Utilidade Pública'],
+  ['ENMT4','Energisa Mato Grosso PN','Utilidade Pública'],
+  ['CEEB3','Coelba (Neoenergia) ON','Utilidade Pública'],
+  ['BRAP4','Bradespar PN','Financeiro e Outros'],
+  ['BRAP3','Bradespar ON','Financeiro e Outros'],
+  ['FLRY3','Fleury ON','Saúde'],
+  ['CSNA3','CSN ON','Materiais Básicos'],
+  ['IGTI3','Iguatemi ON','Shoppings e Imóveis'],
+  ['IGTI4','Iguatemi PN','Shoppings e Imóveis'],
+  ['JHSF3','JHSF Participações ON','Shoppings e Imóveis'],
+  ['BMEB4','Banco Mercantil do Brasil PN','Financeiro e Outros'],
+  ['BMEB3','Banco Mercantil do Brasil ON','Financeiro e Outros'],
+  ['ALPA4','Alpargatas PN','Consumo Cíclico'],
+  ['ALPA3','Alpargatas ON','Consumo Cíclico'],
+  ['AZUL3','Azul ON','Bens Industriais'],
+  ['ORVR3','Orizon ON','Utilidade Pública'],
+  ['SLCE3','SLC Agrícola ON','Consumo Não Cíclico'],
+  ['TTEN3','Três Tentos Agro ON','Consumo Não Cíclico'],
+  ['POMO4','Marcopolo PN','Bens Industriais'],
+  ['POMO3','Marcopolo ON','Bens Industriais'],
+  ['CBAV3','CBA - Cia Brasileira de Aluminio ON','Materiais Básicos'],
+  ['UNIP6','Unipar PNB','Materiais Básicos'],
+  ['UNIP3','Unipar ON','Materiais Básicos'],
+  ['UNIP5','Unipar PNA','Materiais Básicos'],
+  ['DIRR3','Direcional Engenharia ON','Construção Civil'],
+  ['BRKM5','Braskem PNA','Materiais Básicos'],
+  ['BRKM3','Braskem ON','Materiais Básicos'],
+  ['BRKM6','Braskem PNB','Materiais Básicos'],
+  ['BRSR6','Banrisul PNB','Financeiro e Outros'],
+  ['BRSR3','Banrisul ON','Financeiro e Outros'],
+  ['MDIA3','M. Dias Branco ON','Consumo Não Cíclico'],
+  ['FRAS3','Frasle Mobility ON','Bens Industriais'],
+  ['ABCB4','Banco ABC Brasil PN','Financeiro e Outros'],
+  ['WHRL4','Whirlpool (Brastemp/Consul) PN','Consumo Cíclico'],
+  ['WHRL3','Whirlpool (Brastemp/Consul) ON','Consumo Cíclico'],
+  ['HAPV3','Hapvida NotreDame Intermédica ON','Saúde'],
+  ['SMTO3','São Martinho ON','Consumo Não Cíclico'],
+  ['EKTR4','Elektro Redes PN','Utilidade Pública'],
+  ['CLSC4','Celesc PN','Utilidade Pública'],
+  ['CLSC3','Celesc ON','Utilidade Pública'],
+  ['SHUL4','Schulz PN','Bens Industriais'],
+  ['ECOR3','Ecorodovias ON','Bens Industriais'],
+  ['VIVA3','Vivara ON','Consumo Cíclico'],
+  ['COGN3','Cogna Educação ON','Consumo Cíclico'],
+  ['RAIZ4','Raízen PN','Petróleo, Gás e Biocombustíveis'],
+  ['SIMH3','Simpar ON','Bens Industriais'],
+  ['VULC3','Vulcabras ON','Consumo Cíclico'],
+  ['HBSA3','Hidrovias do Brasil ON','Bens Industriais'],
+  ['LEVE3','Mahle Metal Leve ON','Bens Industriais'],
+  ['RIAA3','Riachuelo ON','Consumo Cíclico'],
+  ['INTB3','Intelbras ON','Tecnologia da Informação'],
+  ['IRBR3','IRB Brasil RE ON','Financeiro e Outros'],
+  ['DXCO3','Dexco ON','Materiais Básicos'],
+  ['TEND3','Construtora Tenda ON','Construção Civil'],
+  ['MOVI3','Movida ON','Bens Industriais'],
+  ['MGLU3','Magazine Luiza ON','Consumo Cíclico'],
+  ['BEEF3','Minerva Foods ON','Consumo Não Cíclico'],
+  ['GEPA4','Rio Paranapanema Energia PN','Utilidade Pública'],
+  ['GEPA3','Rio Paranapanema Energia ON','Utilidade Pública'],
+  ['EZTC3','EZTec ON','Construção Civil'],
+  ['GRND3','Grendene ON','Consumo Cíclico'],
+  ['MILS3','Mills ON','Bens Industriais'],
+  ['AZZA3','Azzas 2154 (Arezzo&Co + Grupo Soma) ON','Consumo Cíclico'],
+  ['DASA3','Dasa ON','Saúde'],
+  ['CEAB3','C&A Modas ON','Consumo Cíclico'],
+  ['VAMO3','Vamos Locação ON','Bens Industriais'],
+  ['BAZA3','Banco da Amazônia ON','Financeiro e Outros'],
+  ['PINE4','Banco Pine PN','Financeiro e Outros'],
+  ['PINE3','Banco Pine ON','Financeiro e Outros'],
+  ['RECV3','PetroReconcavo ON','Petróleo, Gás e Biocombustíveis'],
+  ['EMAE4','Emae PN','Utilidade Pública'],
   ['BEES3','Banestes ON','Financeiro e Outros'],
   ['BEES4','Banestes PN','Financeiro e Outros'],
-  ['BMIN3','Banco Mercantil Invest. ON','Financeiro e Outros'],
-  ['BMIN4','Banco Mercantil Invest. PN','Financeiro e Outros'],
-  ['CRIV3','Criciúma ON','Financeiro e Outros'],
-  ['CRIV4','Criciúma PN','Financeiro e Outros'],
-  ['RBEV3','Rede Energia','Utilidade Pública'],
-  ['CEDO3','Cedro Têxtil ON','Consumo Cíclico'],
-  ['CEDO4','Cedro Têxtil PN','Consumo Cíclico'],
-  ['FHER3','Forjas Taurus','Bens Industriais'],
-  ['TASA3','Tegma Gestão Logística ON','Bens Industriais'],
-  ['TASA4','Tegma Gestão Logística PN','Bens Industriais'],
-  ['PTNT3','Pettenati ON','Consumo Cíclico'],
-  ['PTNT4','Pettenati PN','Consumo Cíclico'],
-  ['MWET3','Wetzel ON','Bens Industriais'],
-  ['MWET4','Wetzel PN','Bens Industriais'],
+  ['LOGN3','Log-In Logística ON','Bens Industriais'],
+  ['MRVE3','MRV Engenharia ON','Construção Civil'],
+  ['PGMN3','Pague Menos ON','Saúde'],
+  ['COCE5','Coelce (Enel CE) PNA','Utilidade Pública'],
+  ['MDNE3','Moura Dubeux Engenharia ON','Construção Civil'],
+  ['FESA4','Ferbasa PN','Materiais Básicos'],
+  ['FESA3','Ferbasa ON','Materiais Básicos'],
+  ['AUAU3','União Pet (Petz + Cobasi) ON','Consumo Cíclico'],
+  ['LOGG3','LOG Commercial Properties ON','Shoppings e Imóveis'],
+  ['FIQE3','Unifique Telecom ON','Comunicações'],
+  ['SBFG3','Grupo SBF (Centauro) ON','Consumo Cíclico'],
+  ['EUCA4','Eucatex PN','Materiais Básicos'],
+  ['EUCA3','Eucatex ON','Materiais Básicos'],
+  ['YDUQ3','Yduqs ON','Consumo Cíclico'],
+  ['TFCO4','Track & Field PN','Consumo Cíclico'],
+  ['BLAU3','Blau Farmacêutica ON','Saúde'],
+  ['LAVV3','Lavvi Empreendimentos ON','Construção Civil'],
+  ['LWSA3','Locaweb ON','Tecnologia da Informação'],
+  ['DESK3','Desktop ON','Comunicações'],
+  ['TGMA3','Tegma ON','Bens Industriais'],
+  ['OPCT3','OceanPact ON','Bens Industriais'],
+  ['BMOB3','Bemobi ON','Tecnologia da Informação'],
+  ['CEBR5','CEB - Cia Energética de Brasília PNA','Utilidade Pública'],
+  ['CEBR6','CEB - Cia Energética de Brasília PNB','Utilidade Pública'],
+  ['CEBR3','CEB - Cia Energética de Brasília ON','Utilidade Pública'],
+  ['AGRO3','BrasilAgro ON','Consumo Não Cíclico'],
+  ['VTRU3','Vitru Educação ON','Consumo Cíclico'],
+  ['RANI3','Irani Papel e Embalagem ON','Materiais Básicos'],
+  ['TUPY3','Tupy ON','Bens Industriais'],
+  ['PLPL3','Plano & Plano ON','Construção Civil'],
+  ['BSLI3','BRB - Banco de Brasília ON','Financeiro e Outros'],
+  ['BSLI4','BRB - Banco de Brasília PN','Financeiro e Outros'],
+  ['CAML3','Camil Alimentos ON','Consumo Não Cíclico'],
+  ['RAPT4','Randoncorp PN','Bens Industriais'],
+  ['RAPT3','Randoncorp ON','Bens Industriais'],
+  ['MATD3','Hospital Mater Dei ON','Saúde'],
+  ['PNVL3','Dimed (Panvel) ON','Saúde'],
+  ['JSLG3','JSL Logística ON','Bens Industriais'],
 ];
 
 /* ═══════════════════════════════════════════════════════
@@ -769,22 +650,8 @@ document.getElementById('themeBtn').addEventListener('click',()=>{
 });
 
 /* ═══════════════════════════════════════════════════════
-   API KEY UI
+   ATUALIZAÇÃO MANUAL
 ═══════════════════════════════════════════════════════ */
-function refreshApiUI(){
-  const has=!!apiKey;
-  document.getElementById('apiBanner').classList.toggle('hidden',has);
-  const ab=document.getElementById('apiBar'); ab.style.display=has?'flex':'none'; ab.style.alignItems='center';
-  document.getElementById('sdot').style.background=has?'var(--gn)':'var(--yw)';
-  document.getElementById('demoPill').style.display='none';
-}
-document.getElementById('apiBtn').addEventListener('click',()=>document.getElementById('apiBanner').classList.toggle('hidden'));
-document.getElementById('dismissApiBtn').addEventListener('click',()=>document.getElementById('apiBanner').classList.add('hidden'));
-document.getElementById('changeApiBtn').addEventListener('click',()=>{document.getElementById('apiBanner').classList.remove('hidden');document.getElementById('apiInput').focus();});
-document.getElementById('saveApiBtn').addEventListener('click',()=>{
-  const v=document.getElementById('apiInput').value.trim(); if(!v)return;
-  apiKey=v; localStorage.setItem('brapi_key',v); refreshApiUI(); loadData();
-});
 document.getElementById('refreshBtn').addEventListener('click',loadData);
 
 /* ═══════════════════════════════════════════════════════
@@ -859,9 +726,7 @@ async function fetchFundamentus(){
 ═══════════════════════════════════════════════════════ */
 async function brapiFetch(path){
   try{
-    const sep=path.includes('?')?'&':'?';
-    const tok=apiKey?`${sep}token=${apiKey}`:'';
-    const r=await fetch(`https://brapi.dev/api${path}${tok}`);
+    const r=await fetch(`https://brapi.dev/api${path}`);
     if(!r.ok) throw new Error(r.status);
     return await r.json();
   }catch{return null;}
@@ -928,18 +793,6 @@ async function loadData(){
 
   document.getElementById('demoPill').style.display='none';
 
-  // Add stocks present in Fundamentus that aren't in our DB
-  const dbTickers=new Set(stocks.map(s=>s.ticker));
-  Object.keys(fundMap).forEach(tk=>{
-    if(!dbTickers.has(tk)&&/^[A-Z]{4}[3-8]$/.test(tk)){
-      stocks.push({ticker:tk,name:tk,setor:'Outros',price:null,change:null,
-        dy:null,pl:null,pvp:null,roe:null,roic:null,margem:null,evebitda:null,
-        lpa:null,vpa:null,marketcap:null,volume:null,high52:null,low52:null,
-        logo:null,_demo:false});
-      dbTickers.add(tk);
-    }
-  });
-
   // Merge Fundamentus data into stocks
   let enriched=0;
   stocks.forEach(s=>{
@@ -983,13 +836,19 @@ function setTbody(msg){
   document.getElementById('tSub').textContent=msg;
 }
 function setNote(msg){ const el=document.getElementById('tNote'); if(el) el.textContent=msg; }
-/* Inicializa caches/valores de período com os dados padrão (24h / 1 ano) já disponíveis */
+/* Inicializa caches/valores de período com os dados padrão (24h / 1 ano) já disponíveis.
+   Respeita o período atualmente selecionado nos filtros: se não for o padrão
+   (24h / 1 ano), deixa _varVal/_divVal indefinidos para que ensurePeriodData()
+   busque o valor correto do período escolhido, em vez de mostrar o valor de
+   24h/1 ano com o rótulo de outro período. */
 function initPeriodFields(list){
+  const varCode=document.getElementById('fVarPeriod').value;
+  const divCode=document.getElementById('fDivPeriod').value;
   list.forEach(s=>{
     s._varCache={'1d':s.change};
     s._divCache={'1y':s.dy};
-    s._varVal=s.change;
-    s._divVal=s.dy;
+    s._varVal=varCode==='1d'?s.change:undefined;
+    s._divVal=divCode==='1y'?s.dy:undefined;
   });
 }
 function showProgress(on){
@@ -1250,7 +1109,7 @@ async function computeBatch(items,kind,code){
 ═══════════════════════════════════════════════════════ */
 function openModal(ticker){
   const s=stocks.find(x=>x.ticker===ticker); if(!s) return;
-  mActive=ticker; ctType='price'; ctPeriod='1mo';
+  mActive=ticker; ctType='price'; ctPeriod='1d';
 
   const ml=document.getElementById('mLogo');
   ml.innerHTML=s.logo?`<img class="mli" src="${s.logo}" onerror="this.outerHTML='<div class=\\'mlf\\'>${ticker.slice(0,2)}</div>'">`:`<div class="mlf">${ticker.slice(0,2)}</div>`;
@@ -1264,7 +1123,7 @@ function openModal(ticker){
   document.querySelector('.ctt[data-ct="price"]').classList.add('active');
   renderPeriodButtons();
 
-  renderInds(s); renderComp(s); loadChart(ticker,'price','1mo');
+  renderInds(s); renderComp(s); loadChart(ticker,'price','1d');
 
   document.getElementById('ov').classList.add('open');
   document.body.style.overflow='hidden';
@@ -1319,26 +1178,28 @@ function renderComp(s){
   ).join('');
 }
 
+let chartReqId=0;
 async function loadChart(ticker,type,period){
   const area=document.getElementById('chartArea');
+  const reqId=++chartReqId;
   area.innerHTML=`<div class="cp"><span class="sp"></span> Carregando gr\u00e1fico\u2026</div>`;
 
   if(type==='dy'){
     const list=await fetchDividends(ticker);
+    if(reqId!==chartReqId||mActive!==ticker) return;
     const years=DIV_PERIOD_DEFS[period]?.years||5;
     const byYear=dividendsByYear(list,years);
-    area.innerHTML=`<div class="cw"><canvas id="mChart"></canvas></div>`;
+    const note=list.length
+      ? `<div class="source-note" style="margin-top:8px">\ud83d\udcca Fonte: <span class="src-badge">Fundamentus</span> \u2014 soma de proventos por ano-calend\u00e1rio</div>`
+      : `<div class="source-note" style="margin-top:8px">Sem dados de dividendos dispon\u00edveis para ${ticker} (Fundamentus).</div>`;
+    area.innerHTML=`<div class="cw"><canvas id="mChart"></canvas></div>${note}`;
     drawBar(Object.keys(byYear),Object.values(byYear),ticker);
-    if(!list.length){
-      area.innerHTML+=`<div class="source-note" style="margin-top:8px">Sem dados de dividendos dispon\u00edveis para ${ticker} (Fundamentus).</div>`;
-    }else{
-      area.innerHTML+=`<div class="source-note" style="margin-top:8px">\ud83d\udcca Fonte: <span class="src-badge">Fundamentus</span> \u2014 soma de proventos por ano-calend\u00e1rio</div>`;
-    }
     return;
   }
 
   const def=PERIOD_DEFS[period]||PERIOD_DEFS['1mo'];
   const hist=await brapiHistory(ticker,def.range,def.interval);
+  if(reqId!==chartReqId||mActive!==ticker) return;
   if(!hist?.length){area.innerHTML=`<div class="cw"><canvas id="mChart"></canvas></div>`;demoChart(ticker,period);return;}
   let arr=hist;
   if(def.trimDays){
@@ -1426,7 +1287,7 @@ document.querySelectorAll('.ctt').forEach(tab=>{
   tab.addEventListener('click',()=>{
     document.querySelectorAll('.ctt').forEach(t=>t.classList.remove('active'));
     tab.classList.add('active');ctType=tab.dataset.ct;
-    ctPeriod=ctType==='price'?'1mo':'5y';
+    ctPeriod=ctType==='price'?'1d':'1y';
     renderPeriodButtons();
     if(mActive)loadChart(mActive,ctType,ctPeriod);
   });
@@ -1443,14 +1304,13 @@ function closeModal(){
   document.body.style.overflow='';
   if(mChart){mChart.destroy();mChart=null;}
   mActive=null;
+  chartReqId++;
 }
 document.getElementById('mClose').addEventListener('click',closeModal);
 document.getElementById('ov').addEventListener('click',e=>{if(e.target===document.getElementById('ov'))closeModal();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
 initTheme();
-refreshApiUI();
-if(apiKey)document.getElementById('apiInput').value=apiKey;
 updateVarLabel();
 updateDivLabel();
 loadData();
