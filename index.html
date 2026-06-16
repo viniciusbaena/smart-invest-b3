@@ -697,12 +697,34 @@ function parseFundamentusText(txt){
   return Object.keys(map).length>50?map:null;
 }
 
+const FUND_CACHE_KEY='si_fund_v1';
+const FUND_CACHE_TTL=4*60*60*1000; // 4 horas
+
+function saveFundCache(map){
+  try{ localStorage.setItem(FUND_CACHE_KEY,JSON.stringify({ts:Date.now(),data:map})); }
+  catch(e){ console.warn('Fundamentus cache: falha ao salvar',e?.message); }
+}
+function loadFundCache(allowStale){
+  try{
+    const raw=localStorage.getItem(FUND_CACHE_KEY); if(!raw) return null;
+    const {ts,data}=JSON.parse(raw);
+    if(allowStale||Date.now()-ts<FUND_CACHE_TTL) return data;
+    return null;
+  }catch{ return null; }
+}
+
 async function fetchFundamentus(){
+  // Tenta usar cache fresco primeiro (evita sobrecarga nas fontes)
+  const fresh=loadFundCache(false);
+  if(fresh){ console.log('Fundamentus: cache fresco usado');return fresh; }
+
   const target='https://www.fundamentus.com.br/resultado.php';
   const sources=[
     'https://r.jina.ai/'+target,
     'https://r.jina.ai/http://www.fundamentus.com.br/resultado.php',
     'https://api.allorigins.win/raw?url='+encodeURIComponent(target),
+    'https://corsproxy.io/?url='+encodeURIComponent(target),
+    'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(target),
     'https://api.allorigins.win/raw?url='+encodeURIComponent('https://r.jina.ai/'+target),
   ];
   for(const url of sources){
@@ -713,10 +735,17 @@ async function fetchFundamentus(){
       if(!r.ok) continue;
       const txt=await r.text();
       const map=parseFundamentusText(txt);
-      if(map){ console.log(`Fundamentus: ${Object.keys(map).length} ativos`); return map; }
-    }catch(e){console.warn('Fundamentus fonte falhou:',url,e?.message||e);}
+      if(map){
+        console.log(`Fundamentus: ${Object.keys(map).length} ativos (${url.slice(0,40)}…)`);
+        saveFundCache(map);
+        return map;
+      }
+    }catch(e){console.warn('Fundamentus fonte falhou:',url.slice(0,40),e?.message||e);}
   }
-  console.warn('Fundamentus: todas as fontes falharam');
+  // Todas as fontes falharam — usa cache mesmo que expirado
+  const stale=loadFundCache(true);
+  if(stale){ console.warn('Fundamentus: usando cache expirado (fontes indisponíveis)'); return stale; }
+  console.warn('Fundamentus: todas as fontes falharam e sem cache');
   return null;
 }
 
@@ -724,12 +753,21 @@ async function fetchFundamentus(){
    BRAPI.DEV — cotações em tempo real, setor, market cap, logos
    /quote/list não exige token e cobre toda a B3
 ═══════════════════════════════════════════════════════ */
-async function brapiFetch(path){
-  try{
-    const r=await fetch(`https://brapi.dev/api${path}`);
-    if(!r.ok) throw new Error(r.status);
-    return await r.json();
-  }catch{return null;}
+async function brapiFetch(path,retry=1){
+  for(let attempt=0;attempt<=retry;attempt++){
+    try{
+      if(attempt>0) await new Promise(res=>setTimeout(res,1500*attempt));
+      const ctrl=new AbortController(), t=setTimeout(()=>ctrl.abort(),20000);
+      const r=await fetch(`https://brapi.dev/api${path}`,{signal:ctrl.signal});
+      clearTimeout(t);
+      if(!r.ok) throw new Error(r.status);
+      return await r.json();
+    }catch(e){
+      if(attempt===retry) return null;
+      console.warn(`brapi retry ${attempt+1}:`,path.slice(0,40),e?.message);
+    }
+  }
+  return null;
 }
 
 async function brapiHistory(ticker,range,interval){
@@ -772,6 +810,10 @@ async function enrichFromBrapiList(){
 ═══════════════════════════════════════════════════════ */
 async function loadData(){
   setTbody('Inicializando…'); setNote('');
+
+  // Limpa caches de sessão ao recarregar (cotações e dividendos em memória)
+  Object.keys(divCache).forEach(k=>delete divCache[k]);
+  _loading.clear();
 
   // 1. Build base stock list from DB
   stocks=buildStocks();
@@ -1088,7 +1130,7 @@ async function computeBatch(items,kind,code){
   items.forEach(s=>_loading.add(s.ticker+(kind==='var'?'#v#':'#d#')+code));
   showProgress(true);
   let done=0;
-  await mapLimit(items,5,async s=>{
+  await mapLimit(items,3,async s=>{
     let val=null;
     try{
       val = kind==='var' ? await computeVarForStock(s,code) : await computeDivForStock(s,code);
