@@ -28,6 +28,14 @@
     .sdot{width:8px;height:8px;border-radius:50%;background:var(--gn);animation:pulse 2s infinite}
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
     main{padding:20px 24px;max-width:1480px;margin:0 auto}
+    .apib{background:linear-gradient(135deg,rgba(88,166,255,.08),rgba(63,185,80,.06));border:1px solid rgba(88,166,255,.35);border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    .apib.hidden{display:none}
+    .apib-t{flex:1;min-width:220px}
+    .apib-t strong{font-size:14px;display:block;margin-bottom:3px}
+    .apib-t p{font-size:12px;color:var(--mu)}
+    .air{display:flex;gap:8px;flex-wrap:wrap}
+    .air input{padding:7px 12px;background:var(--sf2);border:1px solid var(--bd);border-radius:8px;color:var(--tx);font-size:13px;width:260px;outline:none}
+    .air input:focus{border-color:var(--ac)}
     .filters{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
     .fg{display:flex;flex-direction:column;gap:4px}
     .fg label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--mu)}
@@ -143,11 +151,24 @@
   </div>
   <div class="hr">
     <div class="sdot" id="sdot" title="Status"></div>
+    <button class="ib" id="apiBtn" title="Chave API brapi.dev">🔑</button>
     <button class="ib" id="refreshBtn" title="Atualizar dados">⟳</button>
     <button class="ib" id="themeBtn" title="Tema">🌙</button>
   </div>
 </header>
 <main>
+  <div class="apib hidden" id="apiBanner">
+    <div style="font-size:26px">🔑</div>
+    <div class="apib-t">
+      <strong>Configure uma chave gratuita do brapi.dev para gráficos completos</strong>
+      <p>O brapi.dev passou a exigir chave para consultar histórico de qualquer ação fora das 4 de teste (PETR4, VALE3, ITUB4, MGLU3). Crie uma conta gratuita em <a href="https://brapi.dev" target="_blank">brapi.dev</a> (sem cartão, 15 mil requisições/mês) e cole a chave abaixo. Os fundamentais (Fundamentus) continuam sem precisar de chave.</p>
+    </div>
+    <div class="air">
+      <input id="apiInput" type="text" placeholder="Cole sua chave brapi.dev...">
+      <button class="btn btn-p" id="saveApiBtn">Salvar</button>
+      <button class="btn" id="dismissApiBtn">✕</button>
+    </div>
+  </div>
   <div id="progressBar" class="pbar" style="display:none"><div class="pbar-fill" id="pbarFill" style="width:0%"></div></div>
   <div class="filters">
     <div class="fg"><label>Setor</label><select id="fSetor"><option value="">Todos os setores</option></select></div>
@@ -202,7 +223,7 @@
         <thead><tr>
           <th data-col="ticker">AÇÃO <span class="si">↕</span></th>
           <th data-col="price">PREÇO <span class="si">↕</span></th>
-          <th data-col="change">VAR%<span id="varPeriodLbl"></span> <span class="th-h" data-tip="Variação do preço no período selecionado em 'Período Variação'. No padrão 'Dia', é a variação do pregão atual (do fechamento anterior até a última atualização) — a B3 só opera em dias úteis, então fins de semana/feriados mostram o último pregão disponível. Calculada a partir do histórico de cotações (brapi.dev).">?</span><span class="si">↕</span></th>
+          <th data-col="change">VAR%<span id="varPeriodLbl"></span> <span class="th-h" data-tip="Variação do preço no período selecionado em 'Período Variação'. No padrão 'Dia', é a variação do pregão atual (do fechamento anterior até a última atualização) — a B3 só opera em dias úteis, então fins de semana/feriados mostram o último pregão disponível. Calculada a partir do histórico de cotações (brapi.dev). Períodos além de 'Dia' exigem uma chave gratuita do brapi.dev (ícone 🔑 no topo) — sem ela, só funcionam para PETR4, VALE3, ITUB4 e MGLU3.">?</span><span class="si">↕</span></th>
           <th data-col="dy">DY<span id="dyPeriodLbl"></span> <span class="th-h" data-tip="Dividend Yield: soma de TODOS os proventos pagos no período (dividendos + JCP) ÷ preço atual — somados independentemente da frequência de pagamento da empresa (mensal, bimestral, trimestral, semestral ou anual). O período é definido em 'Período Dividendos'. Clique na ação para ver o histórico detalhado por data.">?</span><span class="si">↕</span></th>
           <th data-col="pl">P/L <span class="th-h" data-tip="Preço ÷ Lucro. Em quantos anos o investidor recupera o investimento via lucros. Negativo = prejuízo.">?</span><span class="si">↕</span></th>
           <th data-col="pvp">P/VP <span class="th-h" data-tip="Preço ÷ Valor Patrimonial. Abaixo de 1 = ação negociando abaixo do valor contábil.">?</span><span class="si">↕</span></th>
@@ -249,6 +270,7 @@
 /* ═══════════════════════════════════════════════════════
    STATE
 ═══════════════════════════════════════════════════════ */
+let apiKey    = localStorage.getItem('brapi_key') || '';
 let stocks    = [];   // all loaded stocks
 let filtered  = [];   // after search/filter
 let page      = 1;
@@ -415,7 +437,7 @@ async function computeVarForStock(s,code){
   if(code==='1d') return s.change;
   const def=PERIOD_DEFS[code]; if(!def) return null;
   const hist=await brapiHistory(s.ticker,def.range,def.interval);
-  if(!hist||hist.length<2) return null;
+  if(hist===NEEDS_TOKEN||!hist||hist.length<2) return null;
   let arr=hist;
   if(def.trimDays){
     const cutoff=Date.now()/1000-def.trimDays*86400;
@@ -697,6 +719,32 @@ document.getElementById('themeBtn').addEventListener('click',()=>{
 });
 
 /* ═══════════════════════════════════════════════════════
+   CHAVE API (brapi.dev) — necessária desde que o brapi.dev
+   passou a exigir token fora das 4 ações de teste
+═══════════════════════════════════════════════════════ */
+function refreshApiUI(){
+  const has=!!apiKey;
+  document.getElementById('sdot').style.background=has?'var(--gn)':'var(--yw)';
+  document.getElementById('sdot').title=has?'Chave brapi.dev configurada':'Sem chave brapi.dev — histórico limitado a PETR4/VALE3/ITUB4/MGLU3';
+  if(has) document.getElementById('apiBanner').classList.add('hidden');
+}
+document.getElementById('apiBtn').addEventListener('click',()=>{
+  document.getElementById('apiBanner').classList.toggle('hidden');
+  document.getElementById('apiInput').focus();
+});
+document.getElementById('dismissApiBtn').addEventListener('click',()=>{
+  document.getElementById('apiBanner').classList.add('hidden');
+  localStorage.setItem('apib_dismissed','1');
+});
+document.getElementById('saveApiBtn').addEventListener('click',()=>{
+  const v=document.getElementById('apiInput').value.trim(); if(!v) return;
+  apiKey=v; localStorage.setItem('brapi_key',v);
+  localStorage.removeItem('apib_dismissed');
+  refreshApiUI();
+  if(mActive) loadChart(mActive,ctType,ctPeriod);
+});
+
+/* ═══════════════════════════════════════════════════════
    ATUALIZAÇÃO MANUAL
 ═══════════════════════════════════════════════════════ */
 document.getElementById('refreshBtn').addEventListener('click',()=>{
@@ -816,13 +864,21 @@ async function fetchFundamentus(){
    BRAPI.DEV — cotações em tempo real, setor, market cap, logos
    /quote/list não exige token e cobre toda a B3
 ═══════════════════════════════════════════════════════ */
+/* Retorna o JSON da resposta, ou o marcador NEEDS_TOKEN se o brapi.dev
+   recusar por falta/invalidez de chave (401) — isso é diferente de uma
+   falha de rede e deve ser tratado de forma explícita (nunca mascarado
+   com dados de demonstração). */
+const NEEDS_TOKEN='__needs_token__';
 async function brapiFetch(path,retry=1){
+  const sep=path.includes('?')?'&':'?';
+  const tok=apiKey?`${sep}token=${encodeURIComponent(apiKey)}`:'';
   for(let attempt=0;attempt<=retry;attempt++){
     try{
       if(attempt>0) await new Promise(res=>setTimeout(res,1500*attempt));
       const ctrl=new AbortController(), t=setTimeout(()=>ctrl.abort(),20000);
-      const r=await fetch(`https://brapi.dev/api${path}`,{signal:ctrl.signal});
+      const r=await fetch(`https://brapi.dev/api${path}${tok}`,{signal:ctrl.signal});
       clearTimeout(t);
+      if(r.status===401) return NEEDS_TOKEN;
       if(!r.ok) throw new Error(r.status);
       return await r.json();
     }catch(e){
@@ -835,6 +891,7 @@ async function brapiFetch(path,retry=1){
 
 async function brapiHistory(ticker,range,interval){
   const d=await brapiFetch(`/quote/${ticker}?range=${range}&interval=${interval}`);
+  if(d===NEEDS_TOKEN) return NEEDS_TOKEN;
   return d?.results?.[0]?.historicalDataPrice||null;
 }
 
@@ -1399,6 +1456,19 @@ async function loadChart(ticker,type,period){
   const def=PERIOD_DEFS[period]||PERIOD_DEFS['1mo'];
   const hist=await brapiHistory(ticker,def.range,def.interval);
   if(reqId!==chartReqId||mActive!==ticker) return;
+  if(hist===NEEDS_TOKEN){
+    area.innerHTML=`<div class="cp">
+      <div style="font-size:26px">🔑</div>
+      <div>Histórico de preços indisponível para ${ticker} sem uma chave gratuita do brapi.dev.</div>
+      <div class="source-note" style="margin-top:2px">Sem chave, isso só funciona para PETR4, VALE3, ITUB4 e MGLU3 (ações de teste da API). <a href="#" id="openApiFromChart">Configurar chave gratuita →</a></div>
+    </div>`;
+    document.getElementById('openApiFromChart')?.addEventListener('click',e=>{
+      e.preventDefault();
+      document.getElementById('apiBanner').classList.remove('hidden');
+      document.getElementById('apiInput').focus();
+    });
+    return;
+  }
   if(!hist?.length){area.innerHTML=`<div class="cw"><canvas id="mChart"></canvas></div>`;demoChart(ticker,period);return;}
   let arr=hist;
   if(def.trimDays){
@@ -1524,6 +1594,9 @@ document.getElementById('ov').addEventListener('click',e=>{if(e.target===documen
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
 initTheme();
+if(apiKey) document.getElementById('apiInput').value=apiKey;
+refreshApiUI();
+if(!apiKey&&!localStorage.getItem('apib_dismissed')) document.getElementById('apiBanner').classList.remove('hidden');
 updateVarLabel();
 updateDivLabel();
 loadData();

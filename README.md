@@ -2,7 +2,7 @@
 
 Painel web (arquivo único `index.html`) com cotações em tempo real, histórico de preços e dividendos, e indicadores fundamentalistas das ~200 maiores ações da B3 por valor de mercado. Fontes de dados: [brapi.dev](https://brapi.dev) (cotações/histórico) e [Fundamentus](https://www.fundamentus.com.br) (indicadores e proventos, via r.jina.ai).
 
-Não é necessária nenhuma chave de API — o painel funciona 100% sem cadastro, para você e para qualquer pessoa que acesse o link.
+Os fundamentais (Fundamentus) funcionam sem nenhum cadastro. Para histórico de preços e dividendos de qualquer ação além das 4 de teste do brapi.dev (PETR4, VALE3, ITUB4, MGLU3), é necessária uma chave gratuita do brapi.dev — crie a sua em [brapi.dev](https://brapi.dev) (sem cartão, 15 mil requisições/mês) e cole no ícone 🔑 no topo do painel. A chave fica salva no navegador de cada pessoa (localStorage), então cada usuário configura a própria.
 
 ## Como publicar no GitHub Pages (gratuito)
 
@@ -41,7 +41,8 @@ Sempre que você editar o `index.html` (por exemplo, pedindo novas melhorias aqu
 
 - A lista cobre as ~200 maiores ações da B3 por valor de mercado (apenas tickers ativos e válidos, sem BDRs ou fracionário).
 - Os dados de **fundamentais** (P/L, P/VP, ROE, etc.) vêm do Fundamentus.
-- Os dados de **cotações, variação de preço e histórico** vêm do brapi.dev (sem necessidade de token).
-- Os dados de **dividendos** vêm da página de proventos do Fundamentus.
-- Em caso de instabilidade de alguma fonte, o painel exibe um modo de demonstração (rótulo "DEMO") até a fonte voltar a responder.
-- No cabeçalho, o botão ⟳ atualiza manualmente todos os dados.
+- Os dados de **cotação atual e variação do dia** (lista geral) vêm do brapi.dev e não exigem chave.
+- Os dados de **histórico de preços** (gráfico ao clicar numa ação) e variações em outros períodos exigem uma chave gratuita do brapi.dev, exceto para PETR4, VALE3, ITUB4 e MGLU3.
+- Os dados de **dividendos** vêm da página de proventos do Fundamentus e não exigem chave.
+- Em caso de instabilidade de alguma fonte (não relacionada à chave), o painel exibe um modo de demonstração (rótulo "DEMO") até a fonte voltar a responder.
+- No cabeçalho, o botão 🔑 abre a configuração da chave brapi.dev e o botão ⟳ atualiza manualmente os dados.
