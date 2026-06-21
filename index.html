@@ -279,7 +279,10 @@ const META = {
 ═══════════════════════════════════════════════════════ */
 // range/interval seguem a convenção do brapi.dev (estilo Yahoo Finance)
 const PERIOD_DEFS = {
-  '1d':  {range:'1d',  interval:'15m', label:'Dia'},
+  // range '5d' (não '1d') porque o '1d' do brapi.dev significa "últimas 24h":
+  // fica vazio fora do horário de pregão (fins de semana, feriados, após o
+  // fechamento). lastSessionOnly filtra para a sessão de pregão mais recente.
+  '1d':  {range:'5d',  interval:'15m', label:'Dia', lastSessionOnly:true},
   '5d':  {range:'5d',  interval:'30m', label:'5D'},
   '15d': {range:'1mo', interval:'1d',  label:'15D', trimDays:15},
   '1mo': {range:'1mo', interval:'1d',  label:'30D'},
@@ -833,6 +836,17 @@ async function brapiFetch(path,retry=1){
 async function brapiHistory(ticker,range,interval){
   const d=await brapiFetch(`/quote/${ticker}?range=${range}&interval=${interval}`);
   return d?.results?.[0]?.historicalDataPrice||null;
+}
+
+/* Filtra candles para manter apenas a data (UTC) do último candle —
+   ou seja, a sessão de pregão mais recente disponível. Necessário porque
+   a B3 só opera em dias úteis: fora do horário de pregão (noite, fim de
+   semana, feriado) "hoje" pode não ter nenhum candle ainda. */
+function lastSessionOnly(hist){
+  if(!hist||hist.length<2) return hist;
+  const lastDate=new Date(hist[hist.length-1].date*1000).toISOString().slice(0,10);
+  const f=hist.filter(d=>new Date(d.date*1000).toISOString().slice(0,10)===lastDate);
+  return f.length>=2?f:hist;
 }
 
 async function brapiQuoteSingle(ticker){
@@ -1392,6 +1406,8 @@ async function loadChart(ticker,type,period){
     const f=hist.filter(d=>d.date>=cutoff);
     if(f.length>=2) arr=f;
   }
+  if(def.lastSessionOnly) arr=lastSessionOnly(arr);
+  if(arr.length<2){area.innerHTML=`<div class="cw"><canvas id="mChart"></canvas></div>`;demoChart(ticker,period);return;}
   area.innerHTML=`<div class="cw"><canvas id="mChart"></canvas></div>`;
   const intraday=/m$|h$/.test(def.interval);
   const longRange=period==='5y'||period==='10y';
