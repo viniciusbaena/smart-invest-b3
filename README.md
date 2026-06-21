@@ -1,8 +1,10 @@
 # Smart Invest B3 — Painel de Ações
 
-Painel web (arquivo único `index.html`) com cotações em tempo real, histórico de preços e dividendos, e indicadores fundamentalistas das ~200 maiores ações da B3 por valor de mercado. Fontes de dados: [brapi.dev](https://brapi.dev) (cotações/histórico) e [Fundamentus](https://www.fundamentus.com.br) (indicadores e proventos, via r.jina.ai).
+Painel web (arquivo único `index.html`) com cotações em tempo real, histórico de preços (até 10 anos) e dividendos, e indicadores fundamentalistas das ~200 maiores ações da B3 por valor de mercado. Fontes de dados: [brapi.dev](https://brapi.dev) (cotação atual, 52 semanas, market cap), [Yahoo Finance](https://finance.yahoo.com) (histórico de preços, via r.jina.ai) e [Fundamentus](https://www.fundamentus.com.br) (indicadores e proventos, via r.jina.ai).
 
-Os fundamentais (Fundamentus) funcionam sem nenhum cadastro. Para histórico de preços e dividendos de qualquer ação além das 4 de teste do brapi.dev (PETR4, VALE3, ITUB4, MGLU3), é necessária uma chave gratuita do brapi.dev — crie a sua em [brapi.dev](https://brapi.dev) (sem cartão, 15 mil requisições/mês) e cole no ícone 🔑 no topo do painel. A chave fica salva no navegador de cada pessoa (localStorage), então cada usuário configura a própria.
+O painel já vem com uma chave do brapi.dev embutida no código, então quem acessa não precisa configurar nada. Essa chave é usada só para cotação atual e dados de 52 semanas/market cap — o histórico de preços (gráficos e variações por período) vem do Yahoo Finance, que não exige chave nem tem limite de plano para nenhuma ação.
+
+> **Nota de segurança:** como este é um site estático (GitHub Pages), a chave do brapi.dev embutida fica visível para qualquer pessoa que abrir o código-fonte da página ou o repositório no GitHub. Essa é uma decisão consciente para priorizar a experiência do visitante — mas significa que a chave pode ser copiada e usada por terceiros, consumindo a cota mensal gratuita (15 mil requisições/mês) do brapi.dev. Se isso acontecer, apenas os dados de 52 semanas/market cap no modal ficam indisponíveis temporariamente — cotação, histórico de preços e dividendos continuam funcionando normalmente, pois não dependem dessa chave. Para trocar a chave sem precisar editar o código manualmente, gere uma nova em [brapi.dev](https://brapi.dev) e substitua o valor de `DEFAULT_BRAPI_KEY` no `index.html`.
 
 ## Como publicar no GitHub Pages (gratuito)
 
@@ -41,8 +43,9 @@ Sempre que você editar o `index.html` (por exemplo, pedindo novas melhorias aqu
 
 - A lista cobre as ~200 maiores ações da B3 por valor de mercado (apenas tickers ativos e válidos, sem BDRs ou fracionário).
 - Os dados de **fundamentais** (P/L, P/VP, ROE, etc.) vêm do Fundamentus.
-- Os dados de **cotação atual e variação do dia** (lista geral) vêm do brapi.dev e não exigem chave.
-- Os dados de **histórico de preços** (gráfico ao clicar numa ação) e variações em outros períodos exigem uma chave gratuita do brapi.dev, exceto para PETR4, VALE3, ITUB4 e MGLU3.
+- Os dados de **cotação atual e variação do dia** (lista geral) vêm do brapi.dev (`/quote/list`, sem chave).
+- Os dados de **histórico de preços** (gráfico ao clicar numa ação, e variações em todos os períodos) vêm do Yahoo Finance, para qualquer uma das 200 ações, até 10 anos.
+- Os dados de **52 semanas e market cap** (modal) vêm do brapi.dev usando a chave embutida.
 - Os dados de **dividendos** vêm da página de proventos do Fundamentus e não exigem chave.
-- Em caso de instabilidade de alguma fonte (não relacionada à chave), o painel exibe um modo de demonstração (rótulo "DEMO") até a fonte voltar a responder.
-- No cabeçalho, o botão 🔑 abre a configuração da chave brapi.dev e o botão ⟳ atualiza manualmente os dados.
+- Em caso de instabilidade de alguma fonte, o painel exibe um modo de demonstração (rótulo "DEMO") até a fonte voltar a responder — nunca dados inventados silenciosamente.
+- No cabeçalho, o botão ⟳ atualiza manualmente os dados.
